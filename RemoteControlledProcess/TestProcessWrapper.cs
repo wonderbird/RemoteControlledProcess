@@ -1,7 +1,9 @@
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Globalization;
 using System.IO;
+using System.Linq;
 using System.Threading;
 using Xunit.Abstractions;
 
@@ -9,17 +11,28 @@ namespace RemoteControlledProcess
 {
     public sealed class TestProcessWrapper : IDisposable
     {
+        private readonly List<Func<bool>> _readinessChecks;
         private readonly TestProjectInfo _testProjectInfo;
         private int? _dotnetHostProcessId;
         private bool _isDisposed;
-        private Process _process;
-        private ProcessStreamBuffer _processStreamBuffer;
+        private IProcess _process;
+        private readonly IProcessFactory _processFactory = new ProcessFactory();
+        private IProcessStreamBuffer _processStreamBuffer;
+        private readonly IProcessStreamBufferFactory _processStreamBufferFactory = new ProcessStreamBufferFactory();
 
         public TestProcessWrapper(string appProjectName, bool isCoverletEnabled)
         {
+            _readinessChecks = new List<Func<bool>>();
             IsCoverletEnabled = isCoverletEnabled;
 
             _testProjectInfo = new TestProjectInfo(appProjectName);
+        }
+
+        internal TestProcessWrapper(IProcessFactory processFactory, IProcessStreamBufferFactory streamBufferFactory)
+            : this("fakeProjectName", false)
+        {
+            _processFactory = processFactory;
+            _processStreamBufferFactory = streamBufferFactory;
         }
 
         public bool IsCoverletEnabled { get; }
@@ -51,13 +64,14 @@ namespace RemoteControlledProcess
 
         public void Start()
         {
-            _process = new Process { StartInfo = CreateProcessStartInfo() };
+            _process = _processFactory.CreateProcess();
+            _process.StartInfo = CreateProcessStartInfo();
 
             TestOutputHelper?.WriteLine(
                 $"Starting process: {_process.StartInfo.FileName} {_process.StartInfo.Arguments} ...");
             _process.Start();
 
-            _processStreamBuffer = new ProcessStreamBuffer();
+            _processStreamBuffer = _processStreamBufferFactory.CreateProcessStreamBuffer();
             _processStreamBuffer.BeginCapturing(_process.BeginOutputReadLine,
                 handler => _process.OutputDataReceived += handler, handler => _process.OutputDataReceived -= handler);
 
@@ -110,17 +124,30 @@ namespace RemoteControlledProcess
 
         private void WaitAndProcessRequiredStartupMessages()
         {
+            bool isReady;
+
             do
             {
+                // TODO: Checking for the correct startupMessage and waiting for the _dotnetHostProcessId is a readiness check. Move the corresponding logic into _readinessChecks.
                 var startupMessage = ReadOutput();
                 ParseStartupMessage(startupMessage);
 
+                // TODO: Add test ensuring that the results of the readiness checks are considered correctly
+                // TODO: Only re-execute failing readiness checks
+                isReady = _readinessChecks.All(check => check());
+
+                // TODO: Don't sleep if all _readinessChecks passed
                 Thread.Sleep(100);
             }
-            while (!_dotnetHostProcessId.HasValue);
+            while (!_dotnetHostProcessId.HasValue || !isReady);
         }
 
         public string ReadOutput() => _processStreamBuffer.StreamContent;
+
+        public void AddReadinessCheck(Func<bool> readinessCheck)
+        {
+            _readinessChecks.Add(readinessCheck);
+        }
 
         private void ParseStartupMessage(string startupMessage)
         {

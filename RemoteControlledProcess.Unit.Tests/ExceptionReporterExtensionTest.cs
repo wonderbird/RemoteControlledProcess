@@ -5,13 +5,13 @@ using Xunit;
 
 namespace RemoteControlledProcess.Unit.Tests
 {
-    public class ExceptionReporterExtensionTests
+    public class ExceptionReporterExtensionTest
     {
         private const string ExceptionMessage = "Exception generated for test purpose";
 
         [Theory]
         [InlineData(0,
-            "Unhandled exception in .*RemoteControlledProcess.Unit.Tests/ExceptionReporterExtensionTests.cs:[0-9]+")]
+            "Unhandled exception in .*RemoteControlledProcess.Unit.Tests/ExceptionReporterExtensionTest.cs:[0-9]+")]
         [InlineData(1, ExceptionMessage)]
         public void Write_CalledInCatchBlock_WrittenMessagesMatch(int invocationIndex, string expectedMessageRegex)
         {
@@ -51,7 +51,7 @@ namespace RemoteControlledProcess.Unit.Tests
 
             // Assert
             var expectedMessageRegex =
-                "Unhandled exception in .*RemoteControlledProcess.Unit.Tests/ExceptionReporterExtensionTests.cs:[0-9]+";
+                "Unhandled exception in .*RemoteControlledProcess.Unit.Tests/ExceptionReporterExtensionTest.cs:[0-9]+";
             var actualLogLevel = (LogLevel)loggerMock.Invocations[0].Arguments[0];
             var actualMessage = loggerMock.Invocations[0].Arguments[2].ToString();
             Assert.Equal(LogLevel.Critical, actualLogLevel);

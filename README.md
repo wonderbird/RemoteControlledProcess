@@ -47,7 +47,8 @@ an [Open Source License](https://www.jetbrains.com/community/opensource/) for th
 
 To compile, test and run this project the latest [.NET SDK](https://dotnet.microsoft.com/download) is required on
 your machine. For calculating code metrics I recommend [metrix++](https://github.com/metrixplusplus/metrixplusplus).
-This requires [Python](https://www.python.org/).
+This requires [Python](https://www.python.org/). If you'd like to contribute, then please use the
+[dotnet format](https://github.com/dotnet/format#how-to-install) command as described below.
 
 To use the `RemoteControlledProcess` library and to run the unit tests you need the following tools installed:
 
